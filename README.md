@@ -1,4 +1,4 @@
-# database
+# csv2sql
 It generates an sql statement to insert values in a column based on a csv/txt file.
 The column name are inferred by the header of the csv/txt file.
 
