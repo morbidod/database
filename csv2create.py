@@ -20,6 +20,17 @@ FILE_SQL=sys.argv[2]
 DATA_FILE=os.path.join(BASE_DIR,FILE_CSV_TXT)
 TABLENAME=sys.argv[3] 
 
+def convert_type(d_type):
+    #print("input:",d_type)
+    if "int" in str(d_type):
+        return "INT"
+    elif "float" in str(d_type):
+        return "FLOAT"
+    elif str(d_type)=="object":
+        return "CHAR(50)"
+    else:
+        return "UNKNOWN"
+
 def infer_sql_type(series, column_name):
     """Tries to infer the most appropriate SQL data type for a pandas Series."""
     if series.empty:
@@ -41,6 +52,33 @@ def infer_sql_type(series, column_name):
         
         return "VARCHAR(100)"
 
+def get_create_sql_from_csv(f,header=True,separator=","):
+    """
+     input f:file csv
+          header: True/False
+          separtaror: character to separate fields in csv file
+    output:string (sql create)      
+    """
+   
+    if (header):
+        fields=f.readline().rstrip()
+        
+    df=pd.read_csv(FILE_CSV_TXT,delimiter=separator,dtype={'ZIP':str})
+    print(df.dtypes)
+
+    sqlCreate="CREATE TABLE "+TABLENAME+ "(" 
+    
+    for col_name in df.columns:
+       sqlCreate+= col_name+" "+infer_sql_type(df[col_name],col_name)+","
+    sqlCreate=sqlCreate[:-1]
+    sqlCreate+=");"
+    
+    for item in f:
+        pass
+    
+    
+    return sqlCreate
+
 def get_sql_from_csv(f,header=True,separator=","):
     """
     input f:file csv
@@ -52,30 +90,13 @@ def get_sql_from_csv(f,header=True,separator=","):
     if (header):
         fields=f.readline().rstrip()
         
-    df=pd.read_csv(FILE_CSV_TXT,delimiter=separator)#,dtype={"ZIP":str})
-    dict_types={}
-    for col_name in df.columns:
-        dict_types[col_name]=infer_sql_type(df[col_name],col_name)
-    print(dict_types)    
-    col_types=[infer_sql_type(df[col_name],col_name) for col_name in df.columns]
-    print(col_types)
     #ciclo sulle righe 
-    sqlInsert="INSERT INTO "+TABLENAME+ " VALUES "
+    sqlInsert="INSERT INTO "+TABLENAME+ "(" + fields + ") VALUES "
     for item in f:
         if item.rstrip()!="":
-            sql_values=""
-            row_values=item.split(separator)
-            for col_type,value in zip(col_types,row_values):
-                
-                if "VARCHAR" in col_type:
-                    sql_values+='"'+value+'",'
-                elif value is None:
-                    sql_values+="NULL,"  
-                else:
-                    sql_values+=value+","    
-        sqlInsert+="\n(" +sql_values[:-1]+"),"  
-    sqlInsert=sqlInsert.replace(",,",",NULL,")
-    return sqlInsert[:-1]+";"
+            sqlInsert+="\n(" +item.rstrip()+"),"  
+
+    return sqlInsert[:-1]
 
 if not (os.path.exists(DATA_FILE)):
     print("File:",DATA_FILE, " non esiste!")
@@ -84,11 +105,12 @@ if not (os.path.exists(DATA_FILE)):
 #open the file file and retrieve the list of CF
 with open(DATA_FILE) as f:
     #print f.readline()
-    sqlInsert=get_sql_from_csv(f,header=True,separator=",")     
+    sqlCreate=get_create_sql_from_csv(f,header=True,separator=",")  
+    #sqlInsert=get_sql_from_csv(f,header=True,separator=",")     
 
 with open(FILE_SQL,"w") as f:
-    f.write(sqlInsert)    
+    f.write(sqlCreate)    
 
-#print(sqlInsert)    
+print(sqlCreate)    
 
     
